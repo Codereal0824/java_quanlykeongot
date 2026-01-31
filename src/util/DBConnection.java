@@ -12,7 +12,7 @@ public class DBConnection {
             // Lưu ý: encrypt=true;trustServerCertificate=true là BẮT BUỘC với SQL Server bản mới
             String url = "jdbc:sqlserver://localhost:1433;databaseName=QuanLyCuaHangKeo;encrypt=true;trustServerCertificate=true";
             String user = "sa"; // Tài khoản mặc định của SQL Server
-            String pass = "12345"; // Mật khẩu lúc em cài SQL Server
+            String pass = "123"; // Mật khẩu lúc em cài SQL Server
 
             // Đăng ký Driver (Bắt buộc với project cũ, project mới có thể bỏ qua nhưng nên giữ)
             Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");

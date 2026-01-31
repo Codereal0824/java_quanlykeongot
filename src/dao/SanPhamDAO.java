@@ -3,30 +3,34 @@ package dao;
 import java.sql.*;
 import java.util.ArrayList;
 import model.SanPham;
-import util.DBConnection;
+import util.DBConnection; // Kiểm tra xem file kết nối của bạn tên là DBConnection hay DBContext nhé
 
 public class SanPhamDAO {
 
-    // Chức năng: Lấy toàn bộ danh sách kẹo từ SQL về
+    // 1. Lấy toàn bộ danh sách (Đã bổ sung đủ cột)
     public ArrayList<SanPham> getAll() {
         ArrayList<SanPham> list = new ArrayList<>();
-        Connection conn = DBConnection.getConnection(); // Gọi ông thần kết nối
+        Connection conn = DBConnection.getConnection();
         
         try {
             if (conn != null) {
                 String sql = "SELECT * FROM SANPHAM";
                 Statement st = conn.createStatement();
-                ResultSet rs = st.executeQuery(sql); // Thực thi lệnh SQL
+                ResultSet rs = st.executeQuery(sql);
 
-                // Duyệt qua từng dòng dữ liệu lấy được
                 while (rs.next()) {
+                    // Lấy dữ liệu từ cột SQL
                     int ma = rs.getInt("MaSP");
                     String ten = rs.getString("TenSP");
-                    double gia = rs.getDouble("Gia");
                     int sl = rs.getInt("SoLuong");
+                    double giaBan = rs.getDouble("GiaBan");       // Sửa từ 'Gia' thành 'GiaBan'
+                    double giaNhap = rs.getDouble("GiaNhap");     // Mới thêm
+                    String donVi = rs.getString("DonViTinh");     // Mới thêm
+                    String hinh = rs.getString("HinhAnh");        // Mới thêm
+                    int maLoai = rs.getInt("MaLoai");             // Mới thêm
 
-                    // Gói dữ liệu vào đối tượng SanPham và thêm vào list
-                    SanPham sp = new SanPham(ma, ten, gia, sl);
+                    // Tạo đối tượng SanPham (Constructor phải khớp với thứ tự này trong Model)
+                    SanPham sp = new SanPham(ma, ten, sl, giaBan, giaNhap, donVi, hinh, maLoai);
                     list.add(sp);
                 }
             }
@@ -35,57 +39,65 @@ public class SanPhamDAO {
         }
         return list;
     }
-    
-    // Em có thể viết thêm hàm addSanPham(), deleteSanPham() ở đây
- // Thêm phương thức này vào class SanPhamDAO
+
+    // 2. Thêm mới sản phẩm (Bỏ qua MaSP vì tự tăng)
     public boolean addSanPham(SanPham sp) {
         Connection conn = DBConnection.getConnection();
-        String sql = "INSERT INTO SANPHAM(TenSP, Gia, SoLuong) VALUES(?, ?, ?)";
+        // Câu lệnh INSERT đủ 7 cột (trừ MaSP)
+        String sql = "INSERT INTO SANPHAM(TenSP, SoLuong, GiaBan, GiaNhap, DonViTinh, HinhAnh, MaLoai) VALUES(?, ?, ?, ?, ?, ?, ?)";
+        
         try {
             PreparedStatement ps = conn.prepareStatement(sql);
-            // Gán giá trị cho 3 dấu chấm hỏi
             ps.setString(1, sp.getTenSP());
-            ps.setDouble(2, sp.getGia());
-            ps.setInt(3, sp.getSoLuong());
+            ps.setInt(2, sp.getSoLuong());
+            ps.setDouble(3, sp.getGiaBan());
+            ps.setDouble(4, sp.getGiaNhap());
+            ps.setString(5, sp.getDonVi());
+            ps.setString(6, sp.getHinhAnh());
+            ps.setInt(7, sp.getMaLoai()); // Lưu ý: Nếu chưa có combo box chọn loại, tạm thời để mặc định là 1
 
-            // Thực thi lệnh. Nếu thêm thành công sẽ trả về số dòng > 0
             return ps.executeUpdate() > 0;
         } catch (Exception e) {
             e.printStackTrace();
         }
         return false;
     }
- // Hàm xóa sản phẩm theo Mã
+
+    // 3. Xóa sản phẩm
     public boolean deleteSanPham(int maSP) {
         Connection conn = DBConnection.getConnection();
         String sql = "DELETE FROM SANPHAM WHERE MaSP = ?";
         try {
             PreparedStatement ps = conn.prepareStatement(sql);
             ps.setInt(1, maSP);
-            
-            // Thực thi lệnh xóa
             return ps.executeUpdate() > 0;
         } catch (Exception e) {
+            // Nếu lỗi do khóa ngoại (đã bán trong hóa đơn), in ra để biết
+            System.out.println("Không xóa được do sản phẩm này đã có trong hóa đơn!");
             e.printStackTrace();
         }
         return false;
     }
- // Hàm cập nhật thông tin sản phẩm
+
+    // 4. Cập nhật sản phẩm (Sửa đủ thông tin)
     public boolean updateSanPham(SanPham sp) {
         Connection conn = DBConnection.getConnection();
-        // Câu lệnh SQL Update
-        String sql = "UPDATE SANPHAM SET TenSP=?, Gia=?, SoLuong=? WHERE MaSP=?";
+        // Câu lệnh UPDATE cập nhật tất cả thông tin dựa trên MaSP
+        String sql = "UPDATE SANPHAM SET TenSP=?, SoLuong=?, GiaBan=?, GiaNhap=?, DonViTinh=?, HinhAnh=?, MaLoai=? WHERE MaSP=?";
         
         try {
             PreparedStatement ps = conn.prepareStatement(sql);
             
-            // Gán giá trị mới vào dấu ?
             ps.setString(1, sp.getTenSP());
-            ps.setDouble(2, sp.getGia());
-            ps.setInt(3, sp.getSoLuong());
+            ps.setInt(2, sp.getSoLuong());
+            ps.setDouble(3, sp.getGiaBan());
+            ps.setDouble(4, sp.getGiaNhap());
+            ps.setString(5, sp.getDonVi());
+            ps.setString(6, sp.getHinhAnh());
+            ps.setInt(7, sp.getMaLoai());
             
-            // Quan trọng: Gán MaSP vào dấu ? cuối cùng (Điều kiện WHERE)
-            ps.setInt(4, sp.getMaSP());
+            // Tham số cuối cùng là MaSP để làm điều kiện WHERE
+            ps.setInt(8, sp.getMaSP());
 
             return ps.executeUpdate() > 0;
         } catch (Exception e) {
