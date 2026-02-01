@@ -38,13 +38,18 @@ public class LoginForm extends JFrame {
         btnLogin.setBounds(140, 150, 120, 30);
         add(btnLogin);
 
-        // Xử lý sự kiện nút Đăng nhập
+        // Xử lý sự kiện click chuột
         btnLogin.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 xuLyDangNhap();
             }
         });
+
+        // --- CẬP NHẬT MỚI: Thêm sự kiện nhấn Enter ---
+        // Dòng lệnh này biến nút Login thành nút mặc định
+        // Khi nhấn Enter ở bất cứ đâu trên form, nó sẽ gọi btnLogin.doClick()
+        this.getRootPane().setDefaultButton(btnLogin);
     }
 
     private void xuLyDangNhap() {
@@ -59,25 +64,20 @@ public class LoginForm extends JFrame {
         TaiKhoanDAO dao = new TaiKhoanDAO();
         TaiKhoan tk = dao.checkLogin(user, pass);
 
-//        if (tk != null) {
-//            JOptionPane.showMessageDialog(this, "Đăng nhập thành công! Xin chào " + tk.getHoTen());
-//            this.dispose(); // Đóng form Login
-//            
-//            // Mở form Bán Hàng (Truyền thông tin người dùng vào để lưu hóa đơn)
-//            new BanHangForm(tk).setVisible(true); 
-//        } else {
-//            JOptionPane.showMessageDialog(this, "Sai tài khoản hoặc mật khẩu!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-//        }
         if (tk != null) {
+            // Đăng nhập thành công thì đóng form Login và mở MainForm
             JOptionPane.showMessageDialog(this, "Đăng nhập thành công!");
             this.dispose(); 
-            
-            // MỞ MENU CHÍNH THAY VÌ MỞ THẲNG BÁN HÀNG
             new MainForm(tk).setVisible(true); 
+        } else {
+            JOptionPane.showMessageDialog(this, "Sai tài khoản hoặc mật khẩu!", "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     public static void main(String[] args) {
-        new LoginForm().setVisible(true);
+        // Nên chạy trên Event Dispatch Thread để an toàn luồng giao diện
+        SwingUtilities.invokeLater(() -> {
+            new LoginForm().setVisible(true);
+        });
     }
 }

@@ -12,38 +12,35 @@ import java.util.ArrayList;
 import dao.SanPhamDAO;
 import dao.LoaiDAO;
 import model.SanPham;
-import model.LoaiSanPham; // Đảm bảo import đúng tên class model của bạn
+import model.LoaiSanPham;	
+import util.DataChangeListener;
 
-public class QuanLySanPhamForm extends JFrame {
+// CHỈNH SỬA: Đổi từ JFrame sang JPanel để nhúng được vào MainForm
+public class QuanLySanPhamPanel extends JPanel implements DataChangeListener{
 
     private JTable table;
     private DefaultTableModel tableModel;
     private SanPhamDAO sanPhamDAO = new SanPhamDAO();
     private LoaiDAO loaiDAO = new LoaiDAO();
 
-    // Các ô nhập liệu
     private JTextField txtTen, txtSoLuong, txtGiaBan, txtGiaNhap, txtDonVi, txtHinhAnh;
-    private JComboBox<LoaiSanPham> cbLoai; // Đã đồng bộ kiểu dữ liệu LoaiSanPham
-    
+    private JComboBox<LoaiSanPham> cbLoai;
     private JLabel lblAnhPreview;
     private JButton btnChonAnh;
 
-    public QuanLySanPhamForm() {
+    public QuanLySanPhamPanel() {
         initUI();
         loadData();
     }
 
     private void initUI() {
-        setTitle("Hệ Thống Quản Lý Cửa Hàng Bánh Kẹo - DNC");
-        setSize(1100, 750);
-        setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        // CHỈNH SỬA: JPanel sử dụng BorderLayout trực tiếp
         setLayout(new BorderLayout());
 
         // --- PHẦN 1: FORM NHẬP LIỆU ---
         JPanel panelTop = new JPanel(new BorderLayout());
         panelTop.setBorder(BorderFactory.createTitledBorder("Thông tin sản phẩm"));
-        panelTop.setPreferredSize(new Dimension(1100, 300));
+        panelTop.setPreferredSize(new Dimension(800, 300)); // Thu nhỏ chiều rộng cho khớp Sidebar
 
         JPanel panelLeft = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
@@ -62,7 +59,7 @@ public class QuanLySanPhamForm extends JFrame {
         row2.add(new JLabel("Số Lượng:"));
         txtSoLuong = new JTextField();
         row2.add(txtSoLuong);
-        row2.add(new JLabel("Đơn vị tính:"));
+        row2.add(new JLabel("Đơn vị:"));
         txtDonVi = new JTextField();
         row2.add(txtDonVi);
         
@@ -85,12 +82,12 @@ public class QuanLySanPhamForm extends JFrame {
         txtGiaNhap = new JTextField();
         panelLeft.add(txtGiaNhap, gbc);
 
-        // Dòng 5: Loại Sản Phẩm (Sửa Dropdown ở đây)
+        // Dòng 5: Loại Sản Phẩm
         gbc.gridx = 0; gbc.gridy = 4;
         panelLeft.add(new JLabel("Loại Sản Phẩm:"), gbc);
         gbc.gridx = 1; gbc.gridy = 4;
         cbLoai = new JComboBox<>();
-        loadComboBoxLoai(); // Hàm này sẽ gọi LoaiDAO để lấy dữ liệu từ bảng LOAISANPHAM
+        loadComboBoxLoai();
         panelLeft.add(cbLoai, gbc);
 
         // Dòng 6: Hình ảnh
@@ -102,11 +99,11 @@ public class QuanLySanPhamForm extends JFrame {
         txtHinhAnh.setBackground(Color.WHITE);
         panelLeft.add(txtHinhAnh, gbc);
 
-        // Panel bên PHẢI: Xem trước ảnh
+        // Panel bên PHẢI: Preview ảnh
         JPanel panelRight = new JPanel(new BorderLayout());
-        panelRight.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 30));
+        panelRight.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         lblAnhPreview = new JLabel("Chưa có ảnh");
-        lblAnhPreview.setPreferredSize(new Dimension(200, 200));
+        lblAnhPreview.setPreferredSize(new Dimension(180, 180));
         lblAnhPreview.setBorder(BorderFactory.createLineBorder(Color.GRAY));
         lblAnhPreview.setHorizontalAlignment(JLabel.CENTER);
         btnChonAnh = new JButton("Chọn Ảnh");
@@ -138,7 +135,6 @@ public class QuanLySanPhamForm extends JFrame {
                 txtHinhAnh.setText(tenFileAnh);
                 hienThiAnh(tenFileAnh);
 
-                // Cập nhật Dropdown theo Mã Loại từ bảng
                 int maLoai = Integer.parseInt(tableModel.getValueAt(row, 7).toString());
                 for (int i = 0; i < cbLoai.getItemCount(); i++) {
                     if (cbLoai.getItemAt(i).getMaLoai() == maLoai) {
@@ -157,12 +153,6 @@ public class QuanLySanPhamForm extends JFrame {
         JButton btnXoa = new JButton("Xóa Sản Phẩm");
         JButton btnLamMoi = new JButton("Làm Mới");
         
-        Dimension btnSize = new Dimension(120, 40);
-        btnThem.setPreferredSize(btnSize);
-        btnSua.setPreferredSize(btnSize);
-        btnXoa.setPreferredSize(btnSize);
-        btnLamMoi.setPreferredSize(btnSize);
-
         panelButton.add(btnThem);
         panelButton.add(btnSua);
         panelButton.add(btnXoa);
@@ -170,56 +160,38 @@ public class QuanLySanPhamForm extends JFrame {
         add(panelButton, BorderLayout.SOUTH);
 
         // --- XỬ LÝ SỰ KIỆN ---
-
         btnChonAnh.addActionListener(e -> chonAnh());
         btnLamMoi.addActionListener(e -> xoaTrangForm());
 
         btnThem.addActionListener(e -> {
             try {
-                // Lấy đối tượng LoaiSanPham đang chọn từ Dropdown
                 LoaiSanPham selectedLoai = (LoaiSanPham) cbLoai.getSelectedItem();
-                
-                SanPham sp = new SanPham(0, txtTen.getText(), 
-                        Integer.parseInt(txtSoLuong.getText()), 
-                        Double.parseDouble(txtGiaBan.getText()), 
-                        Double.parseDouble(txtGiaNhap.getText()), 
-                        txtDonVi.getText(), txtHinhAnh.getText(), 
-                        selectedLoai.getMaLoai()); // Lấy mã từ đối tượng
+                SanPham sp = new SanPham(0, txtTen.getText(), Integer.parseInt(txtSoLuong.getText()), 
+                        Double.parseDouble(txtGiaBan.getText()), Double.parseDouble(txtGiaNhap.getText()), 
+                        txtDonVi.getText(), txtHinhAnh.getText(), selectedLoai.getMaLoai());
 
                 if (sanPhamDAO.addSanPham(sp)) {
                     JOptionPane.showMessageDialog(this, "Thêm thành công!");
-                    loadData();
-                    xoaTrangForm();
+                    loadData(); xoaTrangForm();
                 }
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Lỗi: " + ex.getMessage());
-            }
+            } catch (Exception ex) { JOptionPane.showMessageDialog(this, "Lỗi: " + ex.getMessage()); }
         });
 
         btnSua.addActionListener(e -> {
             int row = table.getSelectedRow();
-            if (row == -1) {
-                JOptionPane.showMessageDialog(this, "Chọn sản phẩm cần sửa!");
-                return;
-            }
+            if (row == -1) { JOptionPane.showMessageDialog(this, "Chọn sản phẩm cần sửa!"); return; }
             try {
                 int maSP = (int) tableModel.getValueAt(row, 0);
                 LoaiSanPham selectedLoai = (LoaiSanPham) cbLoai.getSelectedItem();
-                
-                SanPham sp = new SanPham(maSP, txtTen.getText(), 
-                        Integer.parseInt(txtSoLuong.getText()), 
-                        Double.parseDouble(txtGiaBan.getText()), 
-                        Double.parseDouble(txtGiaNhap.getText()), 
-                        txtDonVi.getText(), txtHinhAnh.getText(), 
-                        selectedLoai.getMaLoai());
+                SanPham sp = new SanPham(maSP, txtTen.getText(), Integer.parseInt(txtSoLuong.getText()), 
+                        Double.parseDouble(txtGiaBan.getText()), Double.parseDouble(txtGiaNhap.getText()), 
+                        txtDonVi.getText(), txtHinhAnh.getText(), selectedLoai.getMaLoai());
 
                 if (sanPhamDAO.updateSanPham(sp)) {
                     JOptionPane.showMessageDialog(this, "Cập nhật thành công!");
                     loadData();
                 }
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Lỗi: " + ex.getMessage());
-            }
+            } catch (Exception ex) { JOptionPane.showMessageDialog(this, "Lỗi: " + ex.getMessage()); }
         });
 
         btnXoa.addActionListener(e -> {
@@ -228,10 +200,7 @@ public class QuanLySanPhamForm extends JFrame {
                 int confirm = JOptionPane.showConfirmDialog(this, "Xác nhận xóa?", "Xóa", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
                     int maSP = (int) tableModel.getValueAt(row, 0);
-                    if (sanPhamDAO.deleteSanPham(maSP)) {
-                        loadData();
-                        xoaTrangForm();
-                    }
+                    if (sanPhamDAO.deleteSanPham(maSP)) { loadData(); xoaTrangForm(); }
                 }
             }
         });
@@ -239,7 +208,6 @@ public class QuanLySanPhamForm extends JFrame {
 
     private void loadComboBoxLoai() {
         cbLoai.removeAllItems();
-        // Lấy danh sách từ LoaiDAO (Nhớ sửa sql trong LoaiDAO thành SELECT * FROM LOAISANPHAM)
         ArrayList<LoaiSanPham> list = loaiDAO.getAll();
         for (LoaiSanPham loai : list) {
             cbLoai.addItem(loai);
@@ -258,24 +226,19 @@ public class QuanLySanPhamForm extends JFrame {
                 Files.copy(src.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 txtHinhAnh.setText(src.getName());
                 hienThiAnh(src.getName());
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
+            } catch (IOException ex) { ex.printStackTrace(); }
         }
     }
 
     private void hienThiAnh(String tenFile) {
         if (tenFile == null || tenFile.isEmpty()) {
-            lblAnhPreview.setIcon(null);
-            lblAnhPreview.setText("Chưa có ảnh");
-            return;
+            lblAnhPreview.setIcon(null); lblAnhPreview.setText("Chưa có ảnh"); return;
         }
         File f = new File("images/" + tenFile);
         if (f.exists()) {
             ImageIcon icon = new ImageIcon(f.getAbsolutePath());
-            Image img = icon.getImage().getScaledInstance(200, 200, Image.SCALE_SMOOTH);
-            lblAnhPreview.setIcon(new ImageIcon(img));
-            lblAnhPreview.setText("");
+            Image img = icon.getImage().getScaledInstance(180, 180, Image.SCALE_SMOOTH);
+            lblAnhPreview.setIcon(new ImageIcon(img)); lblAnhPreview.setText("");
         }
     }
 
@@ -284,28 +247,22 @@ public class QuanLySanPhamForm extends JFrame {
         ArrayList<SanPham> list = sanPhamDAO.getAll();
         for (SanPham sp : list) {
             tableModel.addRow(new Object[]{
-                sp.getMaSP(), sp.getTenSP(), sp.getSoLuong(), 
-                sp.getGiaBan(), sp.getGiaNhap(), sp.getDonVi(), 
-                sp.getHinhAnh(), sp.getMaLoai()
+                sp.getMaSP(), sp.getTenSP(), sp.getSoLuong(), sp.getGiaBan(), 
+                sp.getGiaNhap(), sp.getDonVi(), sp.getHinhAnh(), sp.getMaLoai()
             });
         }
     }
 
     private void xoaTrangForm() {
-        txtTen.setText("");
-        txtSoLuong.setText("");
-        txtGiaBan.setText("");
-        txtGiaNhap.setText("");
-        txtDonVi.setText("");
-        txtHinhAnh.setText("");
+        txtTen.setText(""); txtSoLuong.setText(""); txtGiaBan.setText("");
+        txtGiaNhap.setText(""); txtDonVi.setText(""); txtHinhAnh.setText("");
         if (cbLoai.getItemCount() > 0) cbLoai.setSelectedIndex(0);
-        lblAnhPreview.setIcon(null);
-        lblAnhPreview.setText("Chưa có ảnh");
+        lblAnhPreview.setIcon(null); lblAnhPreview.setText("Chưa có ảnh");
         txtTen.requestFocus();
     }
-
-    public static void main(String[] args) {
-        try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); } catch (Exception e) {}
-        new QuanLySanPhamForm().setVisible(true);
+    
+    @Override
+    public void onDataChange() {
+        loadData(); // Tự động load lại bảng khi có người bán hàng thành công
     }
 }
