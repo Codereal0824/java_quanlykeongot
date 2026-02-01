@@ -1,66 +1,79 @@
 package view;
 
+import dao.TaiKhoanDAO;
+import model.TaiKhoan;
 import javax.swing.*;
-import java.awt.*;
-import java.sql.*;
-import util.DBConnection;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
 public class LoginForm extends JFrame {
-    JTextField txtUser;
-    JPasswordField txtPass;
+    private JTextField txtUser;
+    private JPasswordField txtPass;
+    private JButton btnLogin;
 
     public LoginForm() {
         setTitle("Đăng Nhập Hệ Thống");
         setSize(400, 250);
-        setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLayout(null); // Layout tự do để dễ chỉnh vị trí
+        setLocationRelativeTo(null);
+        setLayout(null);
 
-        JLabel l1 = new JLabel("Username:");
-        l1.setBounds(50, 50, 100, 30);
-        add(l1);
+        JLabel lblUser = new JLabel("Tài khoản:");
+        lblUser.setBounds(50, 50, 80, 25);
+        add(lblUser);
 
         txtUser = new JTextField();
-        txtUser.setBounds(150, 50, 150, 30);
+        txtUser.setBounds(140, 50, 200, 25);
         add(txtUser);
 
-        JLabel l2 = new JLabel("Password:");
-        l2.setBounds(50, 100, 100, 30);
-        add(l2);
+        JLabel lblPass = new JLabel("Mật khẩu:");
+        lblPass.setBounds(50, 100, 80, 25);
+        add(lblPass);
 
         txtPass = new JPasswordField();
-        txtPass.setBounds(150, 100, 150, 30);
+        txtPass.setBounds(140, 100, 200, 25);
         add(txtPass);
 
-        JButton btnLogin = new JButton("Đăng Nhập");
-        btnLogin.setBounds(150, 150, 120, 30);
+        btnLogin = new JButton("Đăng Nhập");
+        btnLogin.setBounds(140, 150, 120, 30);
         add(btnLogin);
 
-        // Xử lý sự kiện đăng nhập
-        btnLogin.addActionListener(e -> checkLogin());
+        // Xử lý sự kiện nút Đăng nhập
+        btnLogin.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                xuLyDangNhap();
+            }
+        });
     }
 
-    private void checkLogin() {
-        String u = txtUser.getText();
-        String p = new String(txtPass.getPassword());
+    private void xuLyDangNhap() {
+        String user = txtUser.getText();
+        String pass = new String(txtPass.getPassword());
 
-        try {
-            Connection conn = DBConnection.getConnection();
-            String sql = "SELECT * FROM TAIKHOAN WHERE Username=? AND Password=?";
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, u);
-            ps.setString(2, p);
+        if (user.isEmpty() || pass.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin!");
+            return;
+        }
 
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                JOptionPane.showMessageDialog(this, "Đăng nhập thành công!");
-                this.dispose(); // Đóng form đăng nhập
-                new QuanLySanPhamForm().setVisible(true); // Mở form chính
-            } else {
-                JOptionPane.showMessageDialog(this, "Sai tài khoản hoặc mật khẩu!");
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        TaiKhoanDAO dao = new TaiKhoanDAO();
+        TaiKhoan tk = dao.checkLogin(user, pass);
+
+//        if (tk != null) {
+//            JOptionPane.showMessageDialog(this, "Đăng nhập thành công! Xin chào " + tk.getHoTen());
+//            this.dispose(); // Đóng form Login
+//            
+//            // Mở form Bán Hàng (Truyền thông tin người dùng vào để lưu hóa đơn)
+//            new BanHangForm(tk).setVisible(true); 
+//        } else {
+//            JOptionPane.showMessageDialog(this, "Sai tài khoản hoặc mật khẩu!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+//        }
+        if (tk != null) {
+            JOptionPane.showMessageDialog(this, "Đăng nhập thành công!");
+            this.dispose(); 
+            
+            // MỞ MENU CHÍNH THAY VÌ MỞ THẲNG BÁN HÀNG
+            new MainForm(tk).setVisible(true); 
         }
     }
 

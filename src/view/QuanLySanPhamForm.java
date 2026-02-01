@@ -37,7 +37,7 @@ public class QuanLySanPhamForm extends JFrame {
         setTitle("Hệ Thống Quản Lý Cửa Hàng Bánh Kẹo - DNC");
         setSize(1100, 750);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
 
      // --- PHẦN 1: FORM NHẬP LIỆU (Đã sửa lại Layout cho đẹp) ---
@@ -169,6 +169,14 @@ public class QuanLySanPhamForm extends JFrame {
         panelButton.add(btnThem);
         panelButton.add(btnSua);
         panelButton.add(btnXoa);
+     // --- ĐOẠN CODE THÊM MỚI BẮT ĐẦU TỪ ĐÂY ---
+        JButton btnLamMoi = new JButton("Làm Mới");
+        btnLamMoi.setPreferredSize(btnSize); // Dùng chung kích thước với các nút kia
+        panelButton.add(btnLamMoi);
+
+        // Sự kiện cho nút Làm Mới
+        btnLamMoi.addActionListener(e -> xoaTrangForm());
+        // --- KẾT THÚC ĐOẠN CODE THÊM MỚI ---
         add(panelButton, BorderLayout.SOUTH);
 
         // --- XỬ LÝ SỰ KIỆN CÁC NÚT ---
