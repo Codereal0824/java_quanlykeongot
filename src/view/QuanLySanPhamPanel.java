@@ -3,6 +3,11 @@ package view;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter; // Mới thêm
+import javax.swing.RowFilter; // Mới thêm
+import javax.swing.event.DocumentEvent; // Mới thêm
+import javax.swing.event.DocumentListener; // Mới thêm
+
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
@@ -12,11 +17,10 @@ import java.util.ArrayList;
 import dao.SanPhamDAO;
 import dao.LoaiDAO;
 import model.SanPham;
-import model.LoaiSanPham;	
+import model.LoaiSanPham;    
 import util.DataChangeListener;
 
-// CHỈNH SỬA: Đổi từ JFrame sang JPanel để nhúng được vào MainForm
-public class QuanLySanPhamPanel extends JPanel implements DataChangeListener{
+public class QuanLySanPhamPanel extends JPanel implements DataChangeListener {
 
     private JTable table;
     private DefaultTableModel tableModel;
@@ -24,9 +28,13 @@ public class QuanLySanPhamPanel extends JPanel implements DataChangeListener{
     private LoaiDAO loaiDAO = new LoaiDAO();
 
     private JTextField txtTen, txtSoLuong, txtGiaBan, txtGiaNhap, txtDonVi, txtHinhAnh;
+    private JTextField txtTimKiem; // Biến cho ô tìm kiếm
     private JComboBox<LoaiSanPham> cbLoai;
     private JLabel lblAnhPreview;
     private JButton btnChonAnh;
+    
+    // Khai báo bộ lọc
+    private TableRowSorter<DefaultTableModel> sorter;
 
     public QuanLySanPhamPanel() {
         initUI();
@@ -34,27 +42,25 @@ public class QuanLySanPhamPanel extends JPanel implements DataChangeListener{
     }
 
     private void initUI() {
-        // CHỈNH SỬA: JPanel sử dụng BorderLayout trực tiếp
         setLayout(new BorderLayout());
 
-        // --- PHẦN 1: FORM NHẬP LIỆU ---
+        // --- PHẦN 1: FORM NHẬP LIỆU (Giữ nguyên) ---
         JPanel panelTop = new JPanel(new BorderLayout());
         panelTop.setBorder(BorderFactory.createTitledBorder("Thông tin sản phẩm"));
-        panelTop.setPreferredSize(new Dimension(800, 300)); // Thu nhỏ chiều rộng cho khớp Sidebar
+        panelTop.setPreferredSize(new Dimension(800, 300));
 
         JPanel panelLeft = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 10, 5, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        // Dòng 1: Tên
+        // Các dòng nhập liệu (Giữ nguyên như code cũ của bạn)
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.0;
         panelLeft.add(new JLabel("Tên Bánh/Kẹo:"), gbc);
         gbc.gridx = 1; gbc.gridy = 0; gbc.weightx = 1.0;
         txtTen = new JTextField();
         panelLeft.add(txtTen, gbc);
 
-        // Dòng 2: Số lượng & Đơn vị
         JPanel row2 = new JPanel(new GridLayout(1, 4, 10, 0)); 
         row2.add(new JLabel("Số Lượng:"));
         txtSoLuong = new JTextField();
@@ -68,21 +74,18 @@ public class QuanLySanPhamPanel extends JPanel implements DataChangeListener{
         gbc.gridx = 1; gbc.gridy = 1;
         panelLeft.add(row2, gbc);
 
-        // Dòng 3: Giá Bán
         gbc.gridx = 0; gbc.gridy = 2;
         panelLeft.add(new JLabel("Giá Bán:"), gbc);
         gbc.gridx = 1; gbc.gridy = 2;
         txtGiaBan = new JTextField();
         panelLeft.add(txtGiaBan, gbc);
 
-        // Dòng 4: Giá Nhập
         gbc.gridx = 0; gbc.gridy = 3;
         panelLeft.add(new JLabel("Giá Nhập:"), gbc);
         gbc.gridx = 1; gbc.gridy = 3;
         txtGiaNhap = new JTextField();
         panelLeft.add(txtGiaNhap, gbc);
 
-        // Dòng 5: Loại Sản Phẩm
         gbc.gridx = 0; gbc.gridy = 4;
         panelLeft.add(new JLabel("Loại Sản Phẩm:"), gbc);
         gbc.gridx = 1; gbc.gridy = 4;
@@ -90,7 +93,6 @@ public class QuanLySanPhamPanel extends JPanel implements DataChangeListener{
         loadComboBoxLoai();
         panelLeft.add(cbLoai, gbc);
 
-        // Dòng 6: Hình ảnh
         gbc.gridx = 0; gbc.gridy = 5;
         panelLeft.add(new JLabel("File Hình:"), gbc);
         gbc.gridx = 1; gbc.gridy = 5;
@@ -99,7 +101,6 @@ public class QuanLySanPhamPanel extends JPanel implements DataChangeListener{
         txtHinhAnh.setBackground(Color.WHITE);
         panelLeft.add(txtHinhAnh, gbc);
 
-        // Panel bên PHẢI: Preview ảnh
         JPanel panelRight = new JPanel(new BorderLayout());
         panelRight.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         lblAnhPreview = new JLabel("Chưa có ảnh");
@@ -116,37 +117,78 @@ public class QuanLySanPhamPanel extends JPanel implements DataChangeListener{
         panelTop.add(panelRight, BorderLayout.EAST);
         add(panelTop, BorderLayout.NORTH);
 
-        // --- PHẦN 2: BẢNG DỮ LIỆU ---
+        // --- PHẦN 2: BẢNG DỮ LIỆU VÀ TÌM KIẾM (Đã sửa lại cấu trúc) ---
+        // Tạo một Panel chứa cả Thanh tìm kiếm và Bảng
+        JPanel panelCenter = new JPanel(new BorderLayout());
+        
+        // 2.1. Thanh tìm kiếm
+        JPanel panelSearch = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        panelSearch.add(new JLabel("Tìm nhanh tên bánh: "));
+        txtTimKiem = new JTextField(25); // Độ dài ô tìm kiếm
+        panelSearch.add(txtTimKiem);
+        panelCenter.add(panelSearch, BorderLayout.NORTH);
+
+        // 2.2. Bảng dữ liệu
         String[] columnNames = {"Mã SP", "Tên Sản Phẩm", "Số Lượng", "Giá Bán", "Giá Nhập", "Đơn Vị", "Hình Ảnh", "Mã Loại"};
         tableModel = new DefaultTableModel(columnNames, 0);
         table = new JTable(tableModel);
         
+        // Cài đặt bộ lọc (Sorter) cho bảng
+        sorter = new TableRowSorter<>(tableModel);
+        table.setRowSorter(sorter);
+
+        // Xử lý sự kiện khi gõ phím vào ô tìm kiếm
+        txtTimKiem.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { filter(); }
+            public void removeUpdate(DocumentEvent e) { filter(); }
+            public void changedUpdate(DocumentEvent e) { filter(); }
+            
+            private void filter() {
+                String text = txtTimKiem.getText();
+                if (text.trim().length() == 0) {
+                    sorter.setRowFilter(null);
+                } else {
+                    // Lọc theo cột thứ 2 (Index 1 - Tên sản phẩm)
+                    sorter.setRowFilter(RowFilter.regexFilter("(?i)" + text, 1));
+                }
+            }
+        });
+
+        // Xử lý sự kiện click chuột (Quan trọng: Phải convert index)
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                int row = table.getSelectedRow();
-                txtTen.setText(tableModel.getValueAt(row, 1).toString());
-                txtSoLuong.setText(tableModel.getValueAt(row, 2).toString());
-                txtGiaBan.setText(tableModel.getValueAt(row, 3).toString());
-                txtGiaNhap.setText(tableModel.getValueAt(row, 4).toString());
-                txtDonVi.setText(tableModel.getValueAt(row, 5).toString());
-                
-                Object hinh = tableModel.getValueAt(row, 6);
-                String tenFileAnh = (hinh != null) ? hinh.toString() : "";
-                txtHinhAnh.setText(tenFileAnh);
-                hienThiAnh(tenFileAnh);
+                int viewRow = table.getSelectedRow(); // Lấy dòng hiện tại trên giao diện
+                if (viewRow != -1) {
+                    // Chuyển đổi từ dòng trên giao diện sang dòng trong model dữ liệu gốc
+                    // (Vì khi lọc, thứ tự dòng sẽ bị thay đổi)
+                    int modelRow = table.convertRowIndexToModel(viewRow);
 
-                int maLoai = Integer.parseInt(tableModel.getValueAt(row, 7).toString());
-                for (int i = 0; i < cbLoai.getItemCount(); i++) {
-                    if (cbLoai.getItemAt(i).getMaLoai() == maLoai) {
-                        cbLoai.setSelectedIndex(i);
-                        break;
+                    txtTen.setText(tableModel.getValueAt(modelRow, 1).toString());
+                    txtSoLuong.setText(tableModel.getValueAt(modelRow, 2).toString());
+                    txtGiaBan.setText(tableModel.getValueAt(modelRow, 3).toString());
+                    txtGiaNhap.setText(tableModel.getValueAt(modelRow, 4).toString());
+                    txtDonVi.setText(tableModel.getValueAt(modelRow, 5).toString());
+                    
+                    Object hinh = tableModel.getValueAt(modelRow, 6);
+                    String tenFileAnh = (hinh != null) ? hinh.toString() : "";
+                    txtHinhAnh.setText(tenFileAnh);
+                    hienThiAnh(tenFileAnh);
+
+                    int maLoai = Integer.parseInt(tableModel.getValueAt(modelRow, 7).toString());
+                    for (int i = 0; i < cbLoai.getItemCount(); i++) {
+                        if (cbLoai.getItemAt(i).getMaLoai() == maLoai) {
+                            cbLoai.setSelectedIndex(i);
+                            break;
+                        }
                     }
                 }
             }
         });
-        add(new JScrollPane(table), BorderLayout.CENTER);
+        
+        panelCenter.add(new JScrollPane(table), BorderLayout.CENTER);
+        add(panelCenter, BorderLayout.CENTER); // Thêm PanelCenter vào giao diện chính
 
-        // --- PHẦN 3: CÁC NÚT CHỨC NĂNG ---
+        // --- PHẦN 3: CÁC NÚT CHỨC NĂNG (Giữ nguyên logic nhưng sửa lấy ID khi xóa/sửa) ---
         JPanel panelButton = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
         JButton btnThem = new JButton("Thêm Mới");
         JButton btnSua = new JButton("Cập Nhật");
@@ -159,7 +201,7 @@ public class QuanLySanPhamPanel extends JPanel implements DataChangeListener{
         panelButton.add(btnLamMoi);
         add(panelButton, BorderLayout.SOUTH);
 
-        // --- XỬ LÝ SỰ KIỆN ---
+        // --- XỬ LÝ SỰ KIỆN NÚT BẤM ---
         btnChonAnh.addActionListener(e -> chonAnh());
         btnLamMoi.addActionListener(e -> xoaTrangForm());
 
@@ -178,10 +220,13 @@ public class QuanLySanPhamPanel extends JPanel implements DataChangeListener{
         });
 
         btnSua.addActionListener(e -> {
-            int row = table.getSelectedRow();
-            if (row == -1) { JOptionPane.showMessageDialog(this, "Chọn sản phẩm cần sửa!"); return; }
+            int viewRow = table.getSelectedRow();
+            if (viewRow == -1) { JOptionPane.showMessageDialog(this, "Chọn sản phẩm cần sửa!"); return; }
             try {
-                int maSP = (int) tableModel.getValueAt(row, 0);
+                // Sửa lại: Convert Index
+                int modelRow = table.convertRowIndexToModel(viewRow);
+                int maSP = (int) tableModel.getValueAt(modelRow, 0);
+                
                 LoaiSanPham selectedLoai = (LoaiSanPham) cbLoai.getSelectedItem();
                 SanPham sp = new SanPham(maSP, txtTen.getText(), Integer.parseInt(txtSoLuong.getText()), 
                         Double.parseDouble(txtGiaBan.getText()), Double.parseDouble(txtGiaNhap.getText()), 
@@ -195,17 +240,21 @@ public class QuanLySanPhamPanel extends JPanel implements DataChangeListener{
         });
 
         btnXoa.addActionListener(e -> {
-            int row = table.getSelectedRow();
-            if (row != -1) {
+            int viewRow = table.getSelectedRow();
+            if (viewRow != -1) {
                 int confirm = JOptionPane.showConfirmDialog(this, "Xác nhận xóa?", "Xóa", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
-                    int maSP = (int) tableModel.getValueAt(row, 0);
+                    // Sửa lại: Convert Index
+                    int modelRow = table.convertRowIndexToModel(viewRow);
+                    int maSP = (int) tableModel.getValueAt(modelRow, 0);
+                    
                     if (sanPhamDAO.deleteSanPham(maSP)) { loadData(); xoaTrangForm(); }
                 }
             }
         });
     }
 
+    // Các hàm phụ trợ giữ nguyên
     private void loadComboBoxLoai() {
         cbLoai.removeAllItems();
         ArrayList<LoaiSanPham> list = loaiDAO.getAll();
@@ -256,6 +305,7 @@ public class QuanLySanPhamPanel extends JPanel implements DataChangeListener{
     private void xoaTrangForm() {
         txtTen.setText(""); txtSoLuong.setText(""); txtGiaBan.setText("");
         txtGiaNhap.setText(""); txtDonVi.setText(""); txtHinhAnh.setText("");
+        txtTimKiem.setText(""); // Reset ô tìm kiếm
         if (cbLoai.getItemCount() > 0) cbLoai.setSelectedIndex(0);
         lblAnhPreview.setIcon(null); lblAnhPreview.setText("Chưa có ảnh");
         txtTen.requestFocus();
@@ -263,6 +313,6 @@ public class QuanLySanPhamPanel extends JPanel implements DataChangeListener{
     
     @Override
     public void onDataChange() {
-        loadData(); // Tự động load lại bảng khi có người bán hàng thành công
+        loadData(); 
     }
 }
